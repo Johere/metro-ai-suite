@@ -287,13 +287,14 @@ Furthermore, you can simply describe your requirements to an agent to create a c
 
 ## Build the service images from source
 
-When `TAG` is unset or `latest`, `setup_docker.sh` builds these images itself, using the Docker layer cache. With a pinned `TAG`, or with `--no-build`, it uses the prebuilt images from Docker Hub instead — [intel/multilevel-video-understanding](https://hub.docker.com/r/intel/multilevel-video-understanding), [intel/smart-community-mcp-server](https://hub.docker.com/r/intel/smart-community-mcp-server), and [intel/videostream-analytics](https://hub.docker.com/r/intel/videostream-analytics) — and `vllm-ipex-serving` runs from the upstream `intel/llm-scaler-vllm` image. `latest` is a moving tag, and the images bake in the service code while the configuration is regenerated on every deploy, so a stale local `latest` paired with fresh configuration can fail at startup; building for `latest` avoids that. `--build` / `--build-prod` build explicitly and discard the cache.
+When `TAG` is unset or `latest`, `setup_docker.sh` builds these images itself, using the Docker layer cache. With a pinned `TAG`, or with `--no-build`, it uses the prebuilt images from Docker Hub instead — [intel/multilevel-video-understanding](https://hub.docker.com/r/intel/multilevel-video-understanding), [intel/smart-community-mcp-server](https://hub.docker.com/r/intel/smart-community-mcp-server), and [intel/videostream-analytics](https://hub.docker.com/r/intel/videostream-analytics) — and `vllm-ipex-serving` runs from the upstream `intel/llm-scaler-vllm` image. `latest` is a moving tag, and the images bake in the service code while the configuration is regenerated on every deploy, so a stale local `latest` paired with fresh configuration can fail at startup; building for `latest` avoids that. `--build` / `--build-prod` build explicitly. Every build uses the Docker layer cache, so an unchanged tree is quick; add `--no-cache` for a clean rebuild.
 
 ```bash
 source docker/set_env.sh
 
-bash setup_docker.sh --build        # build the three images without cache, do not start
-bash setup_docker.sh --build-prod   # build without cache, then start the full stack
+bash setup_docker.sh --build        # build the three images, do not start
+bash setup_docker.sh --build-prod   # build, then start the full stack
+bash setup_docker.sh --build --no-cache   # clean rebuild, ignoring the layer cache
 bash setup_docker.sh --light --no-build   # never build, even for TAG=latest; use images already present or pulled
 ```
 

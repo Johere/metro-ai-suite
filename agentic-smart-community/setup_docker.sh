@@ -42,7 +42,8 @@ VLLM_SERVICE_PORT=${VLLM_SERVICE_PORT:-41091}
 
 # Default action flags. A start with an unset or `latest` TAG builds the images
 # first (see "decide whether to build" below); a pinned TAG keeps the original
-# pull-and-start behaviour. --build / --build-prod build explicitly, without cache.
+# pull-and-start behaviour. Every build uses the Docker layer cache; --no-cache
+# discards it for a clean rebuild.
 BUILD_IMAGE=false
 BUILD_NO_CACHE=false
 SKIP_BUILD=false
@@ -375,10 +376,12 @@ Options:
   --light                Reuse an already-healthy serving at VLM_BASE_URL/LLM_BASE_URL;
                          start multilevel-video-understanding + videostream-analytics only
                          (builds first when TAG is unset or `latest`, as above)
+  --no-cache             Build without the Docker layer cache (a clean rebuild; use with
+                         --build, --build-prod, or the automatic build for `latest`)
   --no-build             Never build, even when TAG is unset or `latest`; use the images
                          already present or pulled (e.g. --light --no-build)
   --fetch                Only clone/refresh edge-ai-libraries (multilevel build context), no build/start
-  --build                Build the local images without cache (multilevel + videostream-analytics
+  --build                Build the local images (multilevel + videostream-analytics
                          + smart-community-mcp-server), no start
   --build-prod           Build, then start all four services
   --down                 Stop and remove all containers, networks, volumes
@@ -403,11 +406,12 @@ EOF
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --build-prod) BUILD_IMAGE=true;  BUILD_NO_CACHE=true; UP_CONTAINERS=true;  DOWN_CONTAINERS=false; shift ;;
-    --build)      BUILD_IMAGE=true;  BUILD_NO_CACHE=true; UP_CONTAINERS=false; DOWN_CONTAINERS=false; shift ;;
+    --build-prod) BUILD_IMAGE=true;  UP_CONTAINERS=true;  DOWN_CONTAINERS=false; shift ;;
+    --build)      BUILD_IMAGE=true;  UP_CONTAINERS=false; DOWN_CONTAINERS=false; shift ;;
     --prod)       BUILD_IMAGE=false; UP_CONTAINERS=true;  DOWN_CONTAINERS=false; shift ;;
     --light)      BUILD_IMAGE=false; UP_CONTAINERS=true;  DOWN_CONTAINERS=false; LIGHT_MODE=true; shift ;;
     --no-build)   SKIP_BUILD=true; shift ;;
+    --no-cache)   BUILD_NO_CACHE=true; shift ;;
     --fetch)      BUILD_IMAGE=false; UP_CONTAINERS=false; DOWN_CONTAINERS=false; FETCH_ONLY=true; shift ;;
     --down)       BUILD_IMAGE=false; UP_CONTAINERS=false; DOWN_CONTAINERS=true;  shift ;;
     --light-down) BUILD_IMAGE=false; UP_CONTAINERS=false; DOWN_CONTAINERS=false; LIGHT_DOWN=true; shift ;;
