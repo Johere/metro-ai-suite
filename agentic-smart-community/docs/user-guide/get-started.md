@@ -82,7 +82,7 @@ source docker/set_env.sh
 bash setup_docker.sh
 ```
 
-With `TAG` unset or `latest`, `setup_docker.sh` first builds the three service images from the working tree (layer-cached, so an unchanged tree is quick) and pulls the rest. With a pinned release tag such as `TAG=2026.2.0` it pulls the published images and builds nothing. Add `--no-build` to skip the build even for `latest`; see [Build the service images from source](#build-the-service-images-from-source).
+With `TAG` unset or `latest`, `setup_docker.sh` builds a service image from the working tree when it is not present locally, and runs the images already present as they are. With a pinned release tag such as `TAG=2026.2.0` it pulls the published images and builds nothing. Add `--no-build` to never build; see [Build the service images from source](#build-the-service-images-from-source).
 
 **Reuse an existing model serving:** Replace only this Step 1 startup procedure as described in [Use an existing model serving](#use-an-existing-model-serving). After the application tier starts, continue with [Step 2 - Verify the MCP server](#step-2---verify-the-mcp-server) and the remaining steps.
 
@@ -287,7 +287,7 @@ Furthermore, you can simply describe your requirements to an agent to create a c
 
 ## Build the service images from source
 
-When `TAG` is unset or `latest`, `setup_docker.sh` builds these images itself, using the Docker layer cache. With a pinned `TAG`, or with `--no-build`, it uses the prebuilt images from Docker Hub instead — [intel/multilevel-video-understanding](https://hub.docker.com/r/intel/multilevel-video-understanding), [intel/smart-community-mcp-server](https://hub.docker.com/r/intel/smart-community-mcp-server), and [intel/videostream-analytics](https://hub.docker.com/r/intel/videostream-analytics) — and `vllm-ipex-serving` runs from the upstream `intel/llm-scaler-vllm` image. `latest` is a moving tag, and the images bake in the service code while the configuration is regenerated on every deploy, so a stale local `latest` paired with fresh configuration can fail at startup; building for `latest` avoids that. `--build` / `--build-prod` build explicitly. Every build uses the Docker layer cache, so an unchanged tree is quick; add `--no-cache` for a clean rebuild.
+When `TAG` is unset or `latest`, `setup_docker.sh` builds any of these images that is missing locally, using the Docker layer cache, and runs the ones already present. With a pinned `TAG`, or with `--no-build`, it uses the prebuilt images from Docker Hub instead — [intel/multilevel-video-understanding](https://hub.docker.com/r/intel/multilevel-video-understanding), [intel/smart-community-mcp-server](https://hub.docker.com/r/intel/smart-community-mcp-server), and [intel/videostream-analytics](https://hub.docker.com/r/intel/videostream-analytics) — and `vllm-ipex-serving` runs from the upstream `intel/llm-scaler-vllm` image. An existing local image is not rebuilt automatically, and the images bake in the service code while the configuration is regenerated on every deploy: after you change the service code, run `--build` (or `--build-prod`) to refresh them, or a stale image paired with fresh configuration can fail at startup. Every build uses the Docker layer cache, so an unchanged tree is quick; add `--no-cache` for a clean rebuild.
 
 ```bash
 source docker/set_env.sh

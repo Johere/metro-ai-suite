@@ -40,10 +40,10 @@ source "${SCRIPT_DIR}/videostream-analytics/setup_vsa.sh"
 SERVICE_PORT=${SERVICE_PORT:-8192}
 VLLM_SERVICE_PORT=${VLLM_SERVICE_PORT:-41091}
 
-# Default action flags. A start with an unset or `latest` TAG builds the images
-# first (see "decide whether to build" below); a pinned TAG keeps the original
-# pull-and-start behaviour. Every build uses the Docker layer cache; --no-cache
-# discards it for a clean rebuild.
+# Default action flags. With an unset or `latest` TAG, a start builds locally only
+# the images that are missing and runs the ones already present as they are (see
+# the build step below); a pinned TAG keeps the original pull-and-start behaviour.
+# Every build uses the Docker layer cache; --no-cache discards it.
 BUILD_IMAGE=false
 BUILD_NO_CACHE=false
 SKIP_BUILD=false
@@ -370,16 +370,17 @@ Smart-Community Docker Setup
 Usage: $0 [option]
 
 Options:
-  (no option) | --prod   End-to-end start of all three services; builds the images first
-                         when TAG is unset or `latest`, otherwise uses the pulled images
+  (no option) | --prod   End-to-end start of all three services. With TAG unset or `latest`,
+                         images that are missing are built locally and existing ones run as
+                         they are; with a pinned TAG the images are pulled
                          (vllm-ipex-serving + multilevel-video-understanding + videostream-analytics)
   --light                Reuse an already-healthy serving at VLM_BASE_URL/LLM_BASE_URL;
                          start multilevel-video-understanding + videostream-analytics only
-                         (builds first when TAG is unset or `latest`, as above)
+                         (missing images are built for `latest`, as above)
   --no-cache             Build without the Docker layer cache (a clean rebuild; use with
-                         --build, --build-prod, or the automatic build for `latest`)
-  --no-build             Never build, even when TAG is unset or `latest`; use the images
-                         already present or pulled (e.g. --light --no-build)
+                         --build, --build-prod, or the automatic build of missing images)
+  --no-build             Never build, even when an image is missing for `latest`; use the
+                         images already present or pulled (e.g. --light --no-build)
   --fetch                Only clone/refresh edge-ai-libraries (multilevel build context), no build/start
   --build                Build the local images (multilevel + videostream-analytics
                          + smart-community-mcp-server), no start
@@ -420,16 +421,6 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# --- decide whether to build -----------------------------------------------------
-# `latest` is a moving tag: the service code is baked into the image while the
-# configuration is regenerated on every deploy, so a stale local `latest` against
-# fresh config can fail at startup. Build first (layer-cached, so an unchanged
-# tree is quick). A pinned release tag names a published image — pull, don't build.
-if [ "$UP_CONTAINERS" = true ] && [ "$BUILD_IMAGE" = false ] && [ "${TAG:-latest}" = "latest" ]; then
-  BUILD_IMAGE=true
-fi
-[ "$SKIP_BUILD" = true ] && BUILD_IMAGE=false
-
 echo "==== Smart-Community Docker Setup ===="
 
 # Normalise registry prefix exactly like the multilevel service does, so the
@@ -455,11 +446,25 @@ if [ "$FETCH_ONLY" = true ]; then
 fi
 
 # --- build --------------------------------------------------------------------
+# --build / --build-prod build every service. Otherwise, for an unset or `latest`
+# TAG, a missing image is built locally rather than pulled — only the missing ones
+# — and images already present run as they are. A pinned release tag names a
+# published image: pull it, never build. --no-build overrides all of this.
+build_services=()
 if [ "$BUILD_IMAGE" = true ]; then
-  echo "Building local images (multilevel-video-understanding + videostream-analytics + smart-community-mcp-server)..."
+  build_services=(multilevel-video-understanding videostream-analytics smart-community-mcp-server)
+elif [ "$UP_CONTAINERS" = true ] && [ "${TAG:-latest}" = "latest" ]; then
+  docker image inspect "$MULTILEVEL_IMAGE" >/dev/null 2>&1 || build_services+=(multilevel-video-understanding)
+  docker image inspect "$VSA_IMAGE" >/dev/null 2>&1 || build_services+=(videostream-analytics)
+  docker image inspect "$MCP_IMAGE" >/dev/null 2>&1 || build_services+=(smart-community-mcp-server)
+fi
+[ "$SKIP_BUILD" = true ] && build_services=()
+
+if [ "${#build_services[@]}" -gt 0 ]; then
+  echo "Building local images: ${build_services[*]}..."
   build_args=()
   [ "$BUILD_NO_CACHE" = true ] && build_args+=(--no-cache)
-  $DOCKER_CMD build "${build_args[@]}" multilevel-video-understanding videostream-analytics smart-community-mcp-server
+  $DOCKER_CMD build "${build_args[@]}" "${build_services[@]}"
   echo "==== Build complete! ===="
 fi
 
