@@ -61,6 +61,12 @@ monitor_defaults first and explicit request values last. Numeric parameters
 alone do not imply enabling prefilter. Existing pipeline-only changes bypass
 M1–M4 and use the delta update flow. Schema approval is never a binding gate.
 
+## Hard boundary — use the tools, never change the platform
+
+Work only through the `smart_community_*` tools. Never edit the platform's source code or build files (the Agentic Smart Community checkout: `packages/`, `videostream-analytics/`, `docker/`, `skills/`, and so on), never build or rebuild images, and never restart or recreate containers or services. This applies even if it looks like the only way past an error.
+
+If a tool call fails and its documented parameters cannot fix it, stop. Report the exact error text, what you already tried, and that the fix needs a change to the platform by the user. Do not read the platform source to work around it, and do not substitute shell commands for the tool.
+
 ## Hard tool-call gates
 
 Quick index of the two irreversible tool calls. Each is forbidden unless every

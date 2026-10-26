@@ -507,6 +507,24 @@ class SourceManager:
         )
         return {"source_id": source_id, "pipeline": pipeline}
 
+    @staticmethod
+    def _published_pipeline_config(source: SourceConfig) -> dict[str, Any]:
+        """The blocks a client may read back and send again.
+
+        `prefilter.model_path` is withheld: it is the path VSA resolved from the
+        model name, which a request is never allowed to carry. Publishing it made
+        every read-modify-write client (merge a patch into the running config,
+        send the result back) trip over its own copy of the field.
+        """
+        published = {
+            key: getattr(source, key).model_dump()
+            for key in ("motion", "segment", "static", "prefilter", "roi", "recording", "health")
+            if getattr(source, key, None) is not None
+        }
+        if "prefilter" in published:
+            published["prefilter"].pop("model_path", None)
+        return published
+
     def _describe_bundle(self, source_id: str, bundle: SourceBundle) -> dict[str, Any]:
         pipe = bundle.pipeline
         ts = bundle.last_keepalive_at
@@ -521,11 +539,7 @@ class SourceManager:
             "data_dir": bundle.data_dir,
             "status": pipe.status,
             "running": pipe.is_running,
-            "pipeline_config": {
-                key: getattr(pipe.source, key).model_dump()
-                for key in ("motion", "segment", "static", "prefilter", "roi", "recording", "health")
-                if getattr(pipe.source, key, None) is not None
-            },
+            "pipeline_config": self._published_pipeline_config(pipe.source),
             "prefilter_status": pipe.prefilter_status,
             "recording_enabled": bundle.recorder is not None,
             "health": pipe.health_info,
