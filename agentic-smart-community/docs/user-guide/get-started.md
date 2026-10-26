@@ -240,7 +240,25 @@ Leave the monitor online long enough to process video and store events in `~/.mc
 "Generate today's report for the cam_test monitor."
 ```
 
-**D. Delete a monitor**:
+**D. Switch a monitor's prefilter model**:
+
+Ask which prefilter models are available. 
+
+```text
+"How many prefilter models are available now?"
+```
+> The agent lists the models registered under `prefilter_models` in `${VIDEOSTREAM_CACHE_HOST}/config.yaml` (default `~/.cache/.videostream-analytics/config.yaml`)
+
+To use your own OpenVINO™ model, place its `.xml` and `.bin` under `PREFILTER_MODEL_DIR` (default `~/models/openvino/`), then ask the agent to register it and switch a monitor to it:
+
+```text
+"I have an OpenVINO model at /path/to/your/model.xml. Register it, and update the pipeline of cam_test to use this model."
+```
+
+> [!NOTE]
+> Fore more details, please see [Configure the Prefilter Model for a Monitor](./how-to-guides/configure-prefilter-model.md).
+
+**E. Delete a monitor**:
 
 Ask the agent to delete the monitor registered in the previous step:
 
