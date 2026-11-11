@@ -328,7 +328,7 @@ export TAG=2026.3.0
 ```
 
 > [!NOTE]
-> Export `TAG` before sourcing [docker/set_env.sh](https://github.com/open-edge-platform/metro-ai-suite/blob/main/agentic-smart-community/docker/set_env.sh) so it matches the images you pulled or built.
+> Set `TAG` to match the images you pulled or built.
 
 ## Use an existing model serving
 
