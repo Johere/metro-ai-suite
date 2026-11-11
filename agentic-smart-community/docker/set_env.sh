@@ -15,9 +15,9 @@
 if [[ "${1:-}" == "--reset" ]]; then
   unset HF_HOME HF_ENDPOINT MODEL_SERVING_BACKEND \
     LLM_MODEL MAX_MODEL_LEN LOAD_QUANTIZATION GPU_MEM_UTIL TENSOR_PARALLEL_SIZE \
-    VLLM_OFFLOAD_WEIGHTS_BEFORE_QUANT VLLM_SERVICE_PORT REGISTRY_URL TAG SERVICE_PORT \
+    VLLM_OFFLOAD_WEIGHTS_BEFORE_QUANT REGISTRY_URL TAG \
     VLM_BASE_URL LLM_BASE_URL VLM_MODEL_NAME LLM_MODEL_NAME \
-    VIDEO_SUMMARY_CACHE_HOST SMART_COMMUNITY_DATA_DIR HOST_UID HOST_GID \
+    VIDEO_SUMMARY_CACHE_HOST SMART_COMMUNITY_DATA_DIR \
     WEBHOOK_URL PREFILTER_MODEL_DIR VIDEOSTREAM_CACHE_HOST || return 1
   printf '%s\n' \
     '[set_env] Resetting only variables defaulted in this file; running containers unchanged.' >&2
@@ -65,7 +65,7 @@ export GPU_MEM_UTIL=${GPU_MEM_UTIL:-0.7}
 export VLLM_OFFLOAD_WEIGHTS_BEFORE_QUANT=${VLLM_OFFLOAD_WEIGHTS_BEFORE_QUANT:-0}
 export TENSOR_PARALLEL_SIZE=${TENSOR_PARALLEL_SIZE:-1}  # single integrated GPU on PTL
 
-export VLLM_SERVICE_PORT=${VLLM_SERVICE_PORT:-41091}
+export VLLM_SERVICE_PORT=41091
 
 
 # =========================================================================
@@ -77,7 +77,7 @@ export VLLM_SERVICE_PORT=${VLLM_SERVICE_PORT:-41091}
 export REGISTRY_URL=${REGISTRY_URL:-intel/}
 export REGISTRY=${REGISTRY_URL}
 export TAG=${TAG:-latest}                     # set as the latest release version
-export SERVICE_PORT=${SERVICE_PORT:-8192}
+export SERVICE_PORT=8192
 
 # Run multilevel-video-understanding as the host user
 # To ensure bind-mount directories (e.g. ~/.cache/...) are available in container
@@ -113,8 +113,8 @@ export SMART_COMMUNITY_DATA_DIR=${SMART_COMMUNITY_DATA_DIR:-${HOME}/.mcp-smart-c
 mkdir -p "${SMART_COMMUNITY_DATA_DIR}"
 
 # Run smart-community-mcp-server and videostream-analytics as the host user
-export HOST_UID=${HOST_UID:-$(id -u)}
-export HOST_GID=${HOST_GID:-$(id -g)}
+export HOST_UID=$(id -u)
+export HOST_GID=$(id -g)
 
 # Host timezone, passed into the MCP server container so SQLite's
 # datetime('now','localtime') (used for every event/alert created_at) matches host
