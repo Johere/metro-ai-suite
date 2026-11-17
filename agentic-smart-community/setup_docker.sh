@@ -338,7 +338,7 @@ compose_up() {
 # not just build. Fixed constants; to change source/version, edit them here.
 EDGE_AI_LIBRARIES_DIR="${SCRIPT_DIR}/.external/edge-ai-libraries"
 EDGE_AI_LIBRARIES_REPO="https://github.com/open-edge-platform/edge-ai-libraries.git"
-EDGE_AI_LIBRARIES_REF="main"
+EDGE_AI_LIBRARIES_REF="release-2026.3.0"
 MULTILEVEL_SUBPATH="microservices/multilevel-video-understanding"
 
 ensure_edge_ai_libraries() {

@@ -5,12 +5,12 @@ SPDX-License-Identifier: Apache-2.0
 
 # Docker Setup Script Reference
 
-[setup_docker.sh](https://github.com/open-edge-platform/metro-ai-suite/blob/main/agentic-smart-community/setup_docker.sh) manages the four-service stack: model serving, video understanding, video-stream analytics, and the Smart Community MCP server. Follow [Get Started](../get-started.md#step-1---start-all-services) for installation prerequisites and initial configuration; this page explains what the script does and which options to use.
+[setup_docker.sh](https://github.com/open-edge-platform/metro-ai-suite/blob/release-2026.3.0/agentic-smart-community/setup_docker.sh) manages the four-service stack: model serving, video understanding, video-stream analytics, and the Smart Community MCP server. Follow [Get Started](../get-started.md#step-1---start-all-services) for installation prerequisites and initial configuration; this page explains what the script does and which options to use.
 
 ## What happens during startup
 
 1. **Load the environment.** Sources `docker/set_env.sh` automatically to set model endpoints, image tags, device-group IDs, proxy exclusions, and runtime directories. Set overrides before running the script. The installation guide selects `TAG=2026.3.0`; the script defaults to `latest` when `TAG` is unset.
-2. **Prepare the upstream source.** If missing, shallow-clones only the `multilevel-video-understanding` component from the `edge-ai-libraries` `main` branch into `.external/edge-ai-libraries`. Compose needs these service definitions even when using prebuilt images or stopping services. An existing checkout is reused, not updated.
+2. **Prepare the upstream source.** If missing, shallow-clones only the `multilevel-video-understanding` component from the `edge-ai-libraries` `release-2026.3.0` branch into `.external/edge-ai-libraries`. Compose needs these service definitions even when using prebuilt images or stopping services. An existing checkout is reused, not updated.
 3. **Prepare application images.** Builds missing `latest` images locally; existing images are reused without rebuilding. Pinned tags use local or published images. Explicit build options rebuild the three application images, not the model-serving image.
 4. **Prepare video analytics.** Checks the bundled YOLO11s OpenVINO XML/BIN pair under `PREFILTER_MODEL_DIR` (default `~/models/openvino`). If missing or incomplete, invokes the download/conversion helper. Regenerates the live analytics configuration from its template, backing up a differing previous file.
 5. **Start or reuse model serving.** A normal start launches the bundled serving and waits for readiness. `--light` reuses a healthy serving; if the bundled serving is not healthy, it starts it first. To use an external serving, configure its endpoints and model IDs, then use `--light` as described in [Use an existing model serving](../get-started.md#use-an-existing-model-serving).
