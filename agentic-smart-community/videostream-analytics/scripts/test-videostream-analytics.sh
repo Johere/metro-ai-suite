@@ -26,7 +26,6 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-REPO_DIR="$(dirname "$PROJECT_DIR")"
 PYTHON="${PROJECT_DIR}/.venv/bin/python"
 
 if [[ ! -x "$PYTHON" ]]; then
@@ -53,7 +52,6 @@ VIDEO_SAMPLE="${VSA_TEST_VIDEO:-$PROJECT_DIR/tools/.cache/people-detection.mp4}"
 RUN_UNIT=true
 RUN_MULTIVIDEO=false
 USE_LOCAL=false
-VERBOSE=""
 PYTEST_ARGS=""
 
 while [[ $# -gt 0 ]]; do
@@ -61,7 +59,7 @@ while [[ $# -gt 0 ]]; do
         --unit-only) RUN_MULTIVIDEO=false; shift ;;
         --multi-video) RUN_UNIT=false; RUN_MULTIVIDEO=true; shift ;;
         --local) USE_LOCAL=true; shift ;;
-        -v|--verbose) VERBOSE="-v"; PYTEST_ARGS="-v"; shift ;;
+        -v|--verbose) PYTEST_ARGS="-v"; shift ;;
         *) echo "Unknown argument: $1"; exit 1 ;;
     esac
 done
@@ -88,8 +86,9 @@ ensure_sample_video() {
     if ! ffprobe -v error "$VIDEO_SAMPLE" 2>/dev/null; then
         info "Downloading $SAMPLE_URL"
         mkdir -p "$(dirname "$VIDEO_SAMPLE")"
-        curl -fsSL --retry 3 -o "$VIDEO_SAMPLE.part" "$SAMPLE_URL" && mv "$VIDEO_SAMPLE.part" "$VIDEO_SAMPLE" \
-            || { fail "download failed: $SAMPLE_URL"; return 1; }
+        if ! { curl -fsSL --retry 3 -o "$VIDEO_SAMPLE.part" "$SAMPLE_URL" && mv "$VIDEO_SAMPLE.part" "$VIDEO_SAMPLE"; }; then
+            fail "download failed: $SAMPLE_URL"; return 1
+        fi
     fi
 }
 
@@ -152,12 +151,12 @@ push_rtsp() {
     pkill -f "ffmpeg.*${rtsp_path}" 2>/dev/null || true
     sleep 1
 
-    local seek_args=""
+    local seek_args=()
     if [[ "$seek" -gt 0 ]]; then
-        seek_args="-ss $seek"
+        seek_args=(-ss "$seek")
     fi
 
-    ffmpeg -re -stream_loop -1 $seek_args -i "$video_path" \
+    ffmpeg -re -stream_loop -1 "${seek_args[@]}" -i "$video_path" \
         -an -c copy -f rtsp \
         "rtsp://localhost:$RTSP_PORT/$rtsp_path" \
         </dev/null &>/dev/null &
@@ -212,7 +211,7 @@ start_analytics_local() {
     WEBHOOK_URL="http://localhost:$WEBHOOK_PORT/events" \
     $PYTHON __main__.py --host 127.0.0.1 --port $ANALYTICS_PORT --config config/config.yaml.example &
     LOCAL_SERVER_PID=$!
-    PIDS_TO_KILL+=($LOCAL_SERVER_PID)
+    PIDS_TO_KILL+=("$LOCAL_SERVER_PID")
     sleep 3
     wait_for_analytics
 }
@@ -258,7 +257,8 @@ test_video_scenario() {
     local resp
     resp=$(curl -sf -X POST "http://localhost:$ANALYTICS_PORT/register_source" \
         -H "Content-Type: application/json" -d "$body")
-    local reg_status=$(echo "$resp" | python3 -c "import sys,json; print(json.load(sys.stdin).get('status',''))" 2>/dev/null)
+    local reg_status
+    reg_status=$(echo "$resp" | python3 -c "import sys,json; print(json.load(sys.stdin).get('status',''))" 2>/dev/null)
 
     if [[ "$reg_status" == "started" || "$reg_status" == "already_running" ]]; then
         ok "Source registered: $source_id ($reg_status)"
@@ -360,7 +360,7 @@ if $RUN_MULTIVIDEO; then
 
     # Clean data dir (Docker writes as root → use container to clean)
     if [[ -d "$DATA_DIR" ]] && [[ -n "$(ls -A "$DATA_DIR" 2>/dev/null)" ]]; then
-        if ! rm -rf "$DATA_DIR"/* 2>/dev/null; then
+        if ! rm -rf "${DATA_DIR:?}"/* 2>/dev/null; then
             info "Cleaning $DATA_DIR via container (need root for files written by container)"
             docker run --rm -v "$DATA_DIR":/data alpine sh -c 'rm -rf /data/*' 2>/dev/null || true
         fi
