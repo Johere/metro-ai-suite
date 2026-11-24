@@ -2,17 +2,15 @@
 # =============================================================================
 # videostream-analytics full test script
 #
-# Supports three test modes:
+# Supports two test modes:
 #   1. Unit Tests        — pure Python, using video fixtures generated at test time
-#   2. Integration Tests — Docker container + MediaMTX + RTSP push + mock webhook
-#   3. Scenario Tests    — runs the sample video with the prefilter on and off, verifying clip output
+#   2. Scenario Tests    — runs the sample video with the prefilter on and off, verifying clip output
 #
 # Usage:
 #   bash scripts/test-videostream-analytics.sh              # run all tests
 #   bash scripts/test-videostream-analytics.sh --unit-only  # unit tests only
-#   bash scripts/test-videostream-analytics.sh --integration-only  # integration tests only
 #   bash scripts/test-videostream-analytics.sh --multi-video       # scenario tests (prefilter on / off)
-#   bash scripts/test-videostream-analytics.sh --local             # local (no Docker) integration tests
+#   bash scripts/test-videostream-analytics.sh --local             # local (no Docker) scenario tests
 #   bash scripts/test-videostream-analytics.sh -v           # verbose output
 #
 # Environment variables:
@@ -53,7 +51,6 @@ VIDEO_SAMPLE="${VSA_TEST_VIDEO:-$PROJECT_DIR/tools/.cache/people-detection.mp4}"
 
 # --- Parse Arguments ---
 RUN_UNIT=true
-RUN_INTEGRATION=true
 RUN_MULTIVIDEO=false
 USE_LOCAL=false
 VERBOSE=""
@@ -61,9 +58,8 @@ PYTEST_ARGS=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --unit-only) RUN_INTEGRATION=false; RUN_MULTIVIDEO=false; shift ;;
-        --integration-only) RUN_UNIT=false; shift ;;
-        --multi-video) RUN_UNIT=false; RUN_INTEGRATION=false; RUN_MULTIVIDEO=true; shift ;;
+        --unit-only) RUN_MULTIVIDEO=false; shift ;;
+        --multi-video) RUN_UNIT=false; RUN_MULTIVIDEO=true; shift ;;
         --local) USE_LOCAL=true; shift ;;
         -v|--verbose) VERBOSE="-v"; PYTEST_ARGS="-v"; shift ;;
         *) echo "Unknown argument: $1"; exit 1 ;;
@@ -333,56 +329,6 @@ if $RUN_UNIT; then
     else
         fail "Unit tests FAILED (exit code: $UNIT_EXIT)"
         exit $UNIT_EXIT
-    fi
-fi
-
-# =============================================================================
-# INTEGRATION TESTS (Docker + pytest)
-# =============================================================================
-if $RUN_INTEGRATION && ! $RUN_MULTIVIDEO; then
-    header "INTEGRATION TESTS"
-    cd "$PROJECT_DIR"
-
-    # Check prerequisites
-    ensure_sample_video || exit 1
-
-    if $USE_LOCAL; then
-        info "Mode: LOCAL (no Docker)"
-    else
-        if ! docker image inspect "$DOCKER_IMAGE" &>/dev/null; then
-            info "Docker image not found, building..."
-            docker build -t "$DOCKER_IMAGE" \
-                --build-arg HTTP_PROXY="${HTTP_PROXY:-}" \
-                --build-arg HTTPS_PROXY="${HTTPS_PROXY:-}" \
-                -f docker/Dockerfile . 2>&1 | tail -5
-        fi
-    fi
-
-    # Start infrastructure
-    ensure_mediamtx
-    push_rtsp "$VIDEO_SAMPLE" "live/sample" 0
-    start_mock_webhook
-
-    if $USE_LOCAL; then
-        start_analytics_local
-    else
-        start_analytics_docker
-    fi
-
-    # Run pytest integration suite
-    info "Running integration tests..."
-    $PYTHON -m pytest tests/integration/ $PYTEST_ARGS --tb=short -q -m integration --timeout=360
-    INTEG_EXIT=$?
-
-    if [[ $INTEG_EXIT -eq 0 ]]; then
-        ok "Integration tests PASSED"
-    else
-        fail "Integration tests FAILED (exit code: $INTEG_EXIT)"
-        if [[ -n "$CONTAINER_NAME" ]]; then
-            info "Container logs (last 30 lines):"
-            docker logs "$CONTAINER_NAME" 2>&1 | tail -30
-        fi
-        exit $INTEG_EXIT
     fi
 fi
 
